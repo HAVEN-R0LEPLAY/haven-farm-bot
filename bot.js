@@ -231,13 +231,13 @@ async function handleButton(interaction) {
                 break;
             default:
                 if (interaction.customId.startsWith('process-')) {
-                    await updateOrderStatus(interaction, 'Processing');
+                    await checkEmployeeAndUpdateStatus(interaction, 'Processing');
                 } else if (interaction.customId.startsWith('ready-')) {
-                    await updateOrderStatus(interaction, 'Ready');
+                    await checkEmployeeAndUpdateStatus(interaction, 'Ready');
                 } else if (interaction.customId.startsWith('complete-')) {
-                    await updateOrderStatus(interaction, 'Completed');
+                    await checkEmployeeAndUpdateStatus(interaction, 'Completed');
                 } else if (interaction.customId.startsWith('cancel-')) {
-                    await cancelOrder(interaction);
+                    await checkEmployeeAndCancel(interaction);
                 } else {
                     console.log(`Unknown button: ${interaction.customId}`);
                 }
@@ -884,6 +884,38 @@ async function closeShoppingTicket(interaction) {
         console.error('Error closing shopping ticket:', error);
         await interaction.reply({ content: 'Error closing shopping session.', flags: 64 });
     }
+}
+
+async function checkEmployeeAndUpdateStatus(interaction, newStatus) {
+    // Check if user has employee role
+    const member = interaction.guild.members.cache.get(interaction.user.id);
+    const hasEmployeeRole = member.roles.cache.has(EMPLOYEE_ROLE_ID);
+    
+    if (!hasEmployeeRole) {
+        await interaction.reply({ 
+            content: '❌ You do not have permission to manage orders. Only employees can update order status.',
+            flags: 64
+        });
+        return;
+    }
+    
+    await updateOrderStatus(interaction, newStatus);
+}
+
+async function checkEmployeeAndCancel(interaction) {
+    // Check if user has employee role
+    const member = interaction.guild.members.cache.get(interaction.user.id);
+    const hasEmployeeRole = member.roles.cache.has(EMPLOYEE_ROLE_ID);
+    
+    if (!hasEmployeeRole) {
+        await interaction.reply({ 
+            content: '❌ You do not have permission to manage orders. Only employees can cancel orders.',
+            flags: 64
+        });
+        return;
+    }
+    
+    await cancelOrder(interaction);
 }
 
 async function updateOrderStatus(interaction, newStatus) {

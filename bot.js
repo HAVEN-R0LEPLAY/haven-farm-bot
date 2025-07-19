@@ -51,7 +51,6 @@ farmItems.set('flour', { name: 'Flour', price: 9.00, unit: '1' });
 farmItems.set('orange', { name: 'Orange', price: 3.00, unit: '1' });
 farmItems.set('lemon', { name: 'Lemon', price: 3.00, unit: '1' });
 farmItems.set('beefbroth', { name: 'Beef Broth', price: 9.00, unit: '1' });
-farmItems.set('shit', { name: 'Shit', price: 30.00, unit: '1' });
 farmItems.set('banana', { name: 'Banana', price: 9.00, unit: '1' });
 farmItems.set('strawberry', { name: 'Strawberry', price: 9.00, unit: '1' });
 farmItems.set('blueberry', { name: 'Blueberry', price: 15.00, unit: '1' });
@@ -223,6 +222,9 @@ async function handleButton(interaction) {
                 break;
             case 'close-ticket':
                 await closeShoppingTicket(interaction);
+                break;
+            case 'show-management':
+                await showOrderManagement(interaction);
                 break;
             case 'shop-prev':
                 await showShopPage(interaction, -1);
@@ -822,6 +824,10 @@ async function createShoppingTicket(interaction) {
                 .setLabel('👀 View Cart')
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
+                .setCustomId('show-management')
+                .setLabel('🔧 Employee Management')
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
                 .setCustomId('close-ticket')
                 .setLabel('🚪 Close Order Ticket')
                 .setStyle(ButtonStyle.Danger)
@@ -884,6 +890,94 @@ async function closeShoppingTicket(interaction) {
     } catch (error) {
         console.error('Error closing shopping ticket:', error);
         await interaction.reply({ content: 'Error closing shopping session.', flags: 64 });
+    }
+}
+
+async function showOrderManagement(interaction) {
+    // Check if user has employee role
+    const member = interaction.guild.members.cache.get(interaction.user.id);
+    const hasEmployeeRole = member.roles.cache.has(EMPLOYEE_ROLE_ID);
+    
+    if (!hasEmployeeRole) {
+        await interaction.reply({ 
+            content: '❌ You do not have permission to access order management. Only employees can manage orders.',
+            flags: 64
+        });
+        return;
+    }
+
+    // Look for recent orders in this ticket channel
+    try {
+        const messages = await interaction.channel.messages.fetch({ limit: 50 });
+        const orderMessages = messages.filter(msg => 
+            msg.embeds.length > 0 && 
+            msg.embeds[0].title && 
+            msg.embeds[0].title.includes('Order Confirmation: ORDER-')
+        );
+
+        if (orderMessages.size === 0) {
+            await interaction.reply({ 
+                content: '❌ No orders found in this ticket. Orders must be placed first.',
+                flags: 64
+            });
+            return;
+        }
+
+        // Get the most recent order
+        const latestOrderMessage = orderMessages.first();
+        const orderEmbed = latestOrderMessage.embeds[0];
+        const orderTitle = orderEmbed.title;
+        const orderId = orderTitle.split('ORDER-')[1];
+
+        // Extract order details from the embed
+        const itemsField = orderEmbed.fields.find(field => field.name === 'Items Ordered');
+        const totalField = orderEmbed.fields.find(field => field.name === 'Total Amount');
+        const timeField = orderEmbed.fields.find(field => field.name === 'Order Time');
+
+        // Create employee management interface
+        const orderManagementEmbed = new EmbedBuilder()
+            .setTitle(`🔧 Employee Management: ORDER-${orderId}`)
+            .setDescription(`**Customer:** ${interaction.user.displayName} (${interaction.user.username})\n**Status:** Pending`)
+            .addFields(
+                { name: 'Items Ordered', value: itemsField ? itemsField.value : 'Unknown', inline: false },
+                { name: 'Total Amount', value: totalField ? totalField.value : 'Unknown', inline: true },
+                { name: 'Order Time', value: timeField ? timeField.value : 'Unknown', inline: true }
+            )
+            .setColor('#FFD700')
+            .setThumbnail(interaction.user.displayAvatarURL())
+            .setTimestamp();
+
+        const orderManagementButtons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`process-ORDER-${orderId}`)
+                .setLabel('Mark Processing')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId(`ready-ORDER-${orderId}`)
+                .setLabel('Mark Ready')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId(`complete-ORDER-${orderId}`)
+                .setLabel('Complete')
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId(`cancel-ORDER-${orderId}`)
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        await interaction.reply({
+            embeds: [orderManagementEmbed],
+            components: [orderManagementButtons],
+            flags: 64
+        });
+
+    } catch (error) {
+        console.error('Error showing order management:', error);
+        await interaction.reply({ 
+            content: '❌ Error accessing order management. Please try again.',
+            flags: 64
+        });
     }
 }
 

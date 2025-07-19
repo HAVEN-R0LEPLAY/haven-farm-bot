@@ -51,6 +51,7 @@ farmItems.set('flour', { name: 'Flour', price: 9.00, unit: '1' });
 farmItems.set('orange', { name: 'Orange', price: 3.00, unit: '1' });
 farmItems.set('lemon', { name: 'Lemon', price: 3.00, unit: '1' });
 farmItems.set('beefbroth', { name: 'Beef Broth', price: 9.00, unit: '1' });
+farmItems.set('shit', { name: 'Shit', price: 30.00, unit: '1' });
 farmItems.set('banana', { name: 'Banana', price: 9.00, unit: '1' });
 farmItems.set('strawberry', { name: 'Strawberry', price: 9.00, unit: '1' });
 farmItems.set('blueberry', { name: 'Blueberry', price: 15.00, unit: '1' });
